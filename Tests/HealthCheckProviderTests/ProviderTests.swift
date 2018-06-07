@@ -5,7 +5,7 @@ import Testing
 
 extension Droplet {
     static func testable() throws -> Droplet {
-        var config = try Config(arguments: ["vapor", "--env=test"])
+        var config = try! Config(arguments: ["vapor", "--env=test"])
         try! config.set("healthcheck.url", "healthcheck")
         try! config.addProvider(HealthcheckProvider.Provider.self)
         return try Droplet(config)
@@ -14,7 +14,6 @@ extension Droplet {
         background {
             try! self.run()
         }
-        console.wait(seconds: 0.5)
     }
 }
 
@@ -32,8 +31,22 @@ class ProviderTests: XCTestCase {
             .assertJSON("status", equals: "up")
     }
     
+    func testHealthcheckFail() {
+        var config = try! Config(arguments: ["vapor", "--env=test"])
+        try! config.set("healthcheck.url", "")
+        try! config.addProvider(HealthcheckProvider.Provider.self)
+        let drop = try! Droplet(config)
+        background {
+            try! drop.run()
+        }
+        try! drop
+            .testResponse(to: .get, at: "healthcheck")
+            .assertStatus(is: .notFound)
+    }
+    
     
     static var allTests = [
         ("testHealthcheck", testHealthcheck),
+        ("testHealthcheckFail", testHealthcheckFail),
         ]
 }
